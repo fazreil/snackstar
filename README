@@ -1,0 +1,48 @@
+
+# Running jira software
+We are going to run jira out of jira-software docker image provided by atlassian <sup>1</sup>.
+
+run the command below to create a jira instance
+
+```
+docker volume create --name jiraVolume
+docker run -v jiraVolume:/var/atlassian/application-data/jira --name="jira" -d -p 8080:8080 atlassian/jira-software
+```
+
+# Running gogs
+We are going to run gogs out of gogs docker image provided by gogs <sup>2</sup>
+
+```
+docker volume create --name gogsVolume
+docker run -v gogsVolume:/data --name=gogs -p 10022:22 -p 10080:3000 -d gogs/gogs
+```
+
+# Create gogs user in jira
+For now let's call this guy 'gogs'
+
+# Create an issue
+Create an issue (task issuetype) and take a look at the issue key.
+When I create it, it is called 'SNACK-17'
+
+# Test calling JIRA Rest API
+this is the form of curl command to call jira rest api to update comment on SNACK-17. Reference can be found at <sup>3</sup>
+```
+curl -u gogs:gogs -X POST --data '{ "body" : "test" }' -H "Content-Type: application/json" http://localhost:8080/rest/api/latest/issue/SNACK-17/comment
+```
+Look at the form of the address, there are:
+- rest api module (.../issue/...)
+- followed by issue key (.../SNACK-17/...)
+- followed by the function name (.../comment)
+
+there is `--data` part where you supply the body of string you like to comment with
+
+# modify git hook to call JIRA Rest API
+(todo)
+
+# Testing curl to update jira comment
+testing
+
+Ref:
+1. https://hub.docker.com/r/atlassian/jira-software
+1. https://github.com/gogs/gogs/tree/main/docker
+1. https://developer.atlassian.com/server/jira/platform/jira-rest-api-example-add-comment-8946422/
