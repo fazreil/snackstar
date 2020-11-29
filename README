@@ -36,6 +36,8 @@ Look at the form of the address, there are:
 
 there is `--data` part where you supply the body of string you like to comment with
 
+the `-u gogs:gogs` specify the authentication to jira in form of `username:password`
+
 # modify git hook to call JIRA Rest API
 (todo)
 
