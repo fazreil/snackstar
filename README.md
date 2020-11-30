@@ -1,0 +1,166 @@
+
+# Running jira software
+We are going to run jira out of jira-software docker image provided by atlassian <sup>1</sup>.
+
+run the command below to create a jira instance
+
+```
+docker volume create --name jiraVolume
+docker run -v jiraVolume:/var/atlassian/application-data/jira --name="jira" -d -p 8080:8080 atlassian/jira-software
+```
+
+to stop jira container use the following command:
+```
+docker container stop jira
+```
+
+to start back jira
+```
+docker container start jira
+```
+
+# Create a project
+Upon setting up jira, I create a project in jira and call it Snackstar with project key SNACK
+
+# Running gogs
+We are going to run gogs out of gogs docker image provided by gogs <sup>2</sup>
+
+```
+docker volume create --name gogsVolume
+docker run -v gogsVolume:/data --name=gogs -p 10022:22 -p 10080:3000 -d gogs/gogs
+```
+
+to stop jira container use the following command:
+```
+docker container stop gogs
+```
+
+to start back jira
+```
+docker container start gogs
+```
+
+# Create a repository
+Upon completing gogs setup, I create a repo and call it Snackstar.
+
+# Create gogs user in jira
+For now let's call this guy 'gogs'
+
+# Create an issue
+Create an issue (task issuetype) and take a look at the issue key.
+When I create it, it is called 'SNACK-17'
+
+# Test calling JIRA Rest API
+this is the form of curl command to call jira rest api to update comment on SNACK-17. Reference can be found at <sup>3</sup>
+```
+curl -u gogs:gogs -X POST --data '{ "body" : "test" }' -H "Content-Type: application/json" http://localhost:8080/rest/api/latest/issue/SNACK-17/comment
+```
+Look at the form of the address, there are:
+- rest api module (.../issue/...)
+- followed by issue key (.../SNACK-17/...)
+- followed by the function name (.../comment)
+
+there is `--data` part where you supply the body of string you like to comment with
+
+the `-u gogs:gogs` specify the authentication to jira in form of `username:password`
+
+# Test calling JIRA Rest API from gogs
+Gogs cannot call jira from localhost:8080, instead gogs need to talk to jira through the host's ip:port
+
+determining the host's ip is done by issuing ip addr command. One of the entry looks as below:
+```
+4: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default
+    link/ether 02:42:bd:be:d0:ba brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:bdff:febe:d0ba/64 scope link
+       valid_lft forever preferred_lft forever
+```
+
+So we need to modify the curl command to the following:
+```
+curl -u gogs:gogs -X POST --data '{ "body" : "hello from gogs" }' -H "Content-Type: application/json" http://172.17.0.1:8080/rest/api/latest/issue/SNACK-17/comment
+```
+
+# modify git hook to call JIRA Rest API
+You may access the following url to see the collection of git hooks you may modify:
+http://localhost:10080/gogsadmin/snackstar/settings/hooks/git/post-receive
+
+
+Original git hook for post-update looks like this:
+```
+#!/bin/sh
+#
+# An example hook script for the "post-receive" event.
+#
+# The "post-receive" script is run after receive-pack has accepted a pack
+# and the repository has been updated.  It is passed arguments in through
+# stdin in the form
+#  <oldrev> <newrev> <refname>
+# For example:
+#  aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+
+while read oldrev newrev refname
+do
+    branch=$(git rev-parse --symbolic --abbrev-ref $refname)
+    if [ "master" = "$branch" ]; then
+        # Do something
+    fi
+    #$(git log -1 --pretty=format:'%h %cn: %s%b' $newrev)
+    commitmsg = $(git log -1 --oneline)
+done
+```
+
+(todo)
+
+## extract the first 7 characters in a hash
+Reference <sup>4</sup>
+```
+export testhash=afdda35ce0c93adb56252ce95544450494cd0b0a
+echo $testhash | awk '{print substr($0,0,7)}'
+```
+
+## getting the commit message from refname
+
+`$refname` is defined as one of the parameter that spells out the branch where the commit comes from /ref/head/master
+
+in order to get the branch, use the following command:
+```
+git rev-parse --symbolic --abbrev-ref $refname
+```
+to get the latest commit message from the said branch, use git log -1 --oneline. Specify the branch using the command above to get latest commit out of the said branch
+
+```
+commitmsg=$(git log -1 --oneline --no-merges $(git rev-parse --symbolic --abbrev-ref $refname))
+```
+
+## modified post-update git hook looks like this:
+```
+#!/bin/sh
+#
+# An example hook script for the "post-receive" event.
+#
+# The "post-receive" script is run after receive-pack has accepted a pack
+# and the repository has been updated.  It is passed arguments in through
+# stdin in the form
+#  <oldrev> <newrev> <refname>
+# For example:
+#  aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+
+while read oldrev newrev refname
+do
+    branch=$(git rev-parse --symbolic --abbrev-ref $refname)
+    commitmsg=$(git log -1 --oneline --no-merges $branch)
+    jiramsg="{ \"body\" : \"$commitmsg\" }"
+    curl -u gogs:gogs -X POST --data "$jiramsg" -H "Content-Type: application/json" http://172.17.0.1:8080/rest/api/latest/issue/SNACK-17/comment
+done
+```
+
+# Testing curl to update jira comment
+testing
+
+Ref:
+1. https://hub.docker.com/r/atlassian/jira-software
+1. https://github.com/gogs/gogs/tree/main/docker
+1. https://developer.atlassian.com/server/jira/platform/jira-rest-api-example-add-comment-8946422/
+1. https://stackoverflow.com/questions/8928224/trying-to-retrieve-first-5-characters-from-string-in-bash-error
