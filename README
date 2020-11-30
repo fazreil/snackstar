@@ -122,8 +122,7 @@ do
     branch=$(git rev-parse --symbolic --abbrev-ref $refname)
     commitmsg=$(git log -1 --oneline --no-merges $branch)
     jiramsg="{ \"body\" : \"$commitmsg\" }"
-    echo $jiramsg > /tmp/jiramsg.txt
-    curl -u gogs:gogs -X POST --data $jiramsg -H "Content-Type: application/json" http://172.17.0.1:8080/rest/api/latest/issue/SNACK-17/comment
+    curl -u gogs:gogs -X POST --data "$jiramsg" -H "Content-Type: application/json" http://172.17.0.1:8080/rest/api/latest/issue/SNACK-17/comment
 done
 ```
 
