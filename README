@@ -102,15 +102,11 @@ commitmsg=$(git log -1 --oneline --no-merges $(git rev-parse --symbolic --abbrev
 while read oldrev newrev refname
 do
     branch=$(git rev-parse --symbolic --abbrev-ref $refname)
-    if [ "master" = "$branch" ]; then
-        # Do something
-    fi
-    #$(git log -1 --pretty=format:'%h %cn: %s%b' $newrev)
-    commitmsg=$(git log -1 --oneline --no-merges $(git rev-parse --symbolic --abbrev-ref $refname))
+    commitmsg=$(git log -1 --oneline --no-merges $branch)
     curl -u gogs:gogs -X POST --data '{ "body" : $commitmsg }' -H "Content-Type: application/json" http://localhost:8080/rest/api/latest/issue/SNACK-17/comment
 done
 ```
- 
+
 # Testing curl to update jira comment
 testing
 
