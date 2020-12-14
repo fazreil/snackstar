@@ -1,0 +1,20 @@
+version: "3.9"
+services:
+  jira:
+    image: atlassian/jira-software
+    ports:
+      - "8080:8080"
+    volumes:
+      - jiraVolume:/var/atlassian/application-data/jira
+    links:
+      - gogs
+  gogs:
+    image: gogs/gogs
+    volumes:
+      - gogsVolume:/data
+    ports:
+      - "10022:22"
+      - "3000:3000"
+volumes:
+  jiraVolume:
+  gogsVolume:
